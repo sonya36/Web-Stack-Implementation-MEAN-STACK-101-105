@@ -44,16 +44,19 @@ Node.js is used to set up Express routes and AngularJS controllers.
     sudo apt update
     sudo apt upgrade
   ```
-    ![UbuntuUpdate](./images/apt.png)
+    ![UbuntuUpdate](./images/aptupdate.png)
+    ![Ubuntugrade](./images/aptupgrade.png)
 - Added certificates :
   ```
     sudo apt -y install curl dirmngr apt-transport-https lsb-release ca-certificates
     curl -sL https://deb.nodesource.com/setup_12.x | sudo -E bash -
   ```
+  ![NodeCertificates](./images/certificates.png)
 - Installed NodeJS :
   ```
     sudo apt install -y nodejs
   ```
+  ![Install node](./images/node.png)
 ## MEAN-Stack-103 : Installing MongoDB
 
 - Imported Mongodb Repository key
@@ -69,6 +72,8 @@ Node.js is used to set up Express routes and AngularJS controllers.
   sudo apt update
   sudo apt install -y mongodb-org
   ```
+  ![Install mongodb](./images/mongodb.png)
+
 - Checked the version :
   ```
     mongod --version
@@ -85,6 +90,7 @@ Node.js is used to set up Express routes and AngularJS controllers.
   ```
     sudo apt install -y npm 
   ```
+  ![Install npm](./images/npm.png)
 - Installed body-parser package :
   ```
     sudo npm install body-parser
@@ -97,6 +103,7 @@ Node.js is used to set up Express routes and AngularJS controllers.
   ```
     npm init
   ```
+  ![Install bodyparser](./images/bodyparser.png)
 - Added a file to it, opened the file and wrote the code in the file :
   ```
     vi server.js
@@ -141,7 +148,214 @@ Node.js is used to set up Express routes and AngularJS controllers.
     console.log('Server up: http://localhost:' + app.get('port'));
     });
   ```
-- 
+## MEAN-Stack-104 : Installing Expressing and setting up routes to the server
+
+
+Express is a lightweight and versatile Node.js framework for web and mobile applications. Utilizing Express to transfer book data to and from our MongoDB database.
+
+Additionally, employing  the Mongoose package, which offers a straightforward, schema-based approach to modeling application data. Mongoose will be used to create a schema for our database to store the book register information.
+  ```
+    sudo npm install express mogoose
+  ```
+- In 'Books folder, created a folder named apps :
+  ```
+    mkdir apps && cd apps
+  ```
+- Created s file named routes.js, opened it and worte the code :
+  ```
+    vi routes.js
+  ```
+    
+  ```
+    var Book = require('./models/book');
+    var path = require('path');
+
+    module.exports = function(app) {
+    
+    // Get all books
+    app.get('/book', async function(req, res) {
+        try {
+        let result = await Book.find({});
+        res.json(result);
+        } catch (err) {
+        res.status(500).json({ error: err.message });
+        }
+    });
+
+    // Add a new book
+    app.post('/book', async function(req, res) {
+        try {
+        var book = new Book({
+            name: req.body.name,
+            isbn: req.body.isbn,
+            author: req.body.author,
+            pages: req.body.pages
+        });
+        let result = await book.save();
+        res.json({
+            message: "Successfully added book",
+            book: result
+        });
+        } catch (err) {
+        res.status(500).json({ error: err.message });
+        }
+    });
+
+    // Delete a book by ISBN
+    app.delete('/book/:isbn', async function(req, res) {
+        try {
+        let result = await Book.findOneAndRemove({ isbn: req.params.isbn });
+        res.json({
+            message: "Successfully deleted the book",
+            book: result
+        });
+        } catch (err) {
+        res.status(500).json({ error: err.message });
+        }
+    });
+
+    // Serve the index.html file for any other routes
+    app.get('*', function(req, res) {
+        res.sendFile(path.join(__dirname, '../public', 'index.html'));
+    });
+    };
+  ```
+- In 'apps' folder created a folder named models, created a file 'book.js' and wrote the code  :
+  ```
+    mkdir models && cd models
+  ``` 
+  ```
+    vi book.js
+  ```
+  ```
+    var mongoose = require('mongoose');
+
+    var bookSchema = new mongoose.Schema({
+       name: String,
+       isbn: { type: String, index: true },
+       author: String,
+       pages: Number
+     });
+     
+     module.exports = mongoose.model('Book', bookSchema);
+  ```
+## MEAN-Stack-105 : Accessing the routes with AngularJs
+Angular Js provides a web framework for creating dynamic views in our web applications. We used AngularJS to connect our web page with Express and perform actions on our book register.
+   ```
+    cd../..
+   ```
+- Created a folder named public :
+  ```
+    mkdir public && cd public
+  ```
+- Added a file name script.js and wrote the code :
+    ```
+    var app = angular.module('myApp', []);
+    app.controller('myCtrl', function($scope, $http) {
+      $http( {
+        method: 'GET',
+        url: '/book'
+      }).then(function successCallback(response) {
+        $scope.books = response.data;
+      }, function errorCallback(response) {
+        console.log('Error: ' + response);
+      });
+      $scope.del_book = function(book) {
+        $http( {
+          method: 'DELETE',
+          url: '/book/:isbn',
+          params: {'isbn': book.isbn}
+        }).then(function successCallback(response) {
+          console.log(response);
+        }, function errorCallback(response) {
+          console.log('Error: ' + response);
+        });
+      };
+      $scope.add_book = function() {
+        var body = '{ "name": "' + $scope.Name + 
+        '", "isbn": "' + $scope.Isbn +
+        '", "author": "' + $scope.Author + 
+        '", "pages": "' + $scope.Pages + '" }';
+        $http({
+          method: 'POST',
+          url: '/book',
+          data: body
+        }).then(function successCallback(response) {
+          console.log(response);
+        }, function errorCallback(response) {
+          console.log('Error: ' + response);
+        });
+      };
+    });
+    ```
+- In 'public' folder, create a file named index.html :
+  ```
+    <!doctype html>
+    <html ng-app="myApp" ng-controller="myCtrl">
+    <head>
+        <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.6.4/angular.min.js"></script>
+        <script src="script.js"></script>
+    </head>
+    <body>
+        <div>
+        <table>
+            <tr>
+            <td>Name:</td>
+            <td><input type="text" ng-model="Name"></td>
+            </tr>
+            <tr>
+            <td>Isbn:</td>
+            <td><input type="text" ng-model="Isbn"></td>
+            </tr>
+            <tr>
+            <td>Author:</td>
+            <td><input type="text" ng-model="Author"></td>
+            </tr>
+            <tr>
+            <td>Pages:</td>
+            <td><input type="number" ng-model="Pages"></td>
+            </tr>
+        </table>
+        <button ng-click="add_book()">Add</button>
+        </div>
+        <hr>
+        <div>
+        <table>
+            <tr>
+            <th>Name</th>
+            <th>Isbn</th>
+            <th>Author</th>
+            <th>Pages</th>
+            </tr>
+            <tr ng-repeat="book in books">
+            <td>{{book.name}}</td>
+            <td>{{book.isbn}}</td>
+            <td>{{book.author}}</td>
+            <td>{{book.pages}}</td>
+            <td><input type="button" value="Delete" ng-click="del_book(book)"></td>
+            </tr>
+        </table>
+        </div>
+    </body>
+    </html>
+  ```
+   ![wep page](./images/webpage.png)
+
+- Changed the directory back up to 'Books' :
+  ```
+  cd ..
+  ```
+- Started the server :
+  ```
+    node server.js
+  ```
+    ![server](./images/server.png)
+
+- Output :
+    ![app](./images/app1.png)
+    ![app](./images/app2.png)
+
+  
 
 
 
